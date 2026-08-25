@@ -1,4 +1,4 @@
-﻿const db = require('../../lib/db');
+const db = require('../../lib/db');
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -8,16 +8,15 @@ module.exports = async (req, res) => {
 
   try {
     if (req.method === 'DELETE') {
-      const id = Number(req.query.id);
+      const id = Number(req.query.id || req.body?.id || (req.url && req.url.split('/').pop().split('?')[0]));
       if (!id) return res.status(400).json({ error: 'ID invalido' });
-      const ok = await db.deleteMovimentacao(id);
-      if (!ok) return res.status(404).json({ error: 'Movimentacao nao encontrada' });
+      await db.deleteMovimentacao(id);
       return res.status(200).json({ success: true });
     }
 
     res.status(405).json({ error: 'Metodo nao permitido' });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Erro interno do servidor' });
+    res.status(500).json({ error: err.message || 'Erro interno do servidor' });
   }
 };

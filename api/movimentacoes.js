@@ -1,8 +1,8 @@
-﻿const db = require('../lib/db');
+const db = require('../lib/db');
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
@@ -14,7 +14,7 @@ module.exports = async (req, res) => {
     }
 
     if (req.method === 'POST') {
-      const { modeloId, tipo, qty, setor, resp, obs } = req.body;
+      const { modeloId, tipo, qty, setor, resp, obs } = req.body || {};
       if (!modeloId)                        return res.status(400).json({ error: 'modeloId e obrigatorio' });
       if (!['entrada','saida'].includes(tipo)) return res.status(400).json({ error: 'tipo deve ser entrada ou saida' });
       if (!qty || Number(qty) < 1)          return res.status(400).json({ error: 'Quantidade invalida' });
@@ -25,7 +25,7 @@ module.exports = async (req, res) => {
       if (tipo === 'saida') {
         const modelos = await db.getAllModelos();
         const modelo  = modelos.find(m => m.id === Number(modeloId));
-        if (!modelo)             return res.status(404).json({ error: 'Modelo nao encontrado' });
+        if (!modelo) return res.status(404).json({ error: 'Modelo nao encontrado' });
         if (Number(qty) > modelo.estoque) return res.status(400).json({ error: `Estoque insuficiente. Disponivel: ${modelo.estoque}` });
       }
 
@@ -34,9 +34,16 @@ module.exports = async (req, res) => {
       return res.status(201).json(mov);
     }
 
+    if (req.method === 'DELETE') {
+      const id = Number(req.query.id || req.body?.id || (req.url && req.url.split('/').pop().split('?')[0]));
+      if (!id) return res.status(400).json({ error: 'ID invalido' });
+      await db.deleteMovimentacao(id);
+      return res.status(200).json({ success: true });
+    }
+
     res.status(405).json({ error: 'Metodo nao permitido' });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Erro interno do servidor' });
+    res.status(500).json({ error: err.message || 'Erro interno do servidor' });
   }
 };
